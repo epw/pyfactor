@@ -1,5 +1,5 @@
 CFLAGS = -g -Wall `pkg-config --cflags python` --shared -fpic
-LIBS = -lm `pkg-config --libs python`
+LIBS = -lm -lgmp `pkg-config --libs python`
 
 all: pyfactor.so
 

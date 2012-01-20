@@ -464,7 +464,7 @@ sort_and_return_factors (void)
 
 /* Arbitrary-precision factoring */
 static uintmax_t *
-print_factors_multi (mpz_t t)
+get_factors_multi (mpz_t t)
 {
 	if (mpz_sgn (t) != 0)
 	{
@@ -499,30 +499,47 @@ get_factors (uintmax_t n)
 		mpz_init (t);
 		mpz_set_ui (t, n);
 		debug ("[%s]", _("using arbitrary-precision arithmetic"));
-		return print_factors_multi (t);
+		return get_factors_multi (t);
 	}
 
 	return get_factors_single (n);
 }
 
+void
+free_factors (void)
+{
+	struct factor *factor, *next_factor;
+
+	for (factor = factors; factor != NULL; factor = next_factor) {
+		next_factor = factor->next;
+		free (factor);
+	}
+	factors = NULL;
+	num_factors = 0;
+}
 
 static PyObject *
 pyfactor_factor (PyObject *self, PyObject *args)
 {
-	PyObject *factors;
-        int n;
+	PyObject *factor_list;
+	uintmax_t *factor_array;
+        int n, i;
 
         if (!PyArg_ParseTuple (args, "i", &n)) {
                 return NULL;
         }
 
-	factors = PyList_New (1);
+	factor_array = get_factors (n);
 
-	PyList_SetItem (factors, 0, Py_BuildValue ("i", n));
+	factor_list = PyList_New (num_factors);
+	for (i = 0; i < num_factors; i++) {
+		PyList_SetItem (factor_list, i,
+				Py_BuildValue ("K", factor_array[i]));
+	}
 
-	PyList_Append (factors, Py_BuildValue ("i", 1));
+	free_factors ();
 
-        return factors;
+        return factor_list;
 }
 
 static PyMethodDef PyfactorMethods[] = {
