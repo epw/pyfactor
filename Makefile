@@ -3,7 +3,7 @@ LIBS = -lm `pkg-config --libs python`
 
 all: pyfactor.so
 
-PYFACTOR_OBJS = pyfactor.o error.o quote.o
+PYFACTOR_OBJS = pyfactor.o
 pyfactor.so: $(PYFACTOR_OBJS)
 	$(CC) $(CFLAGS) -o pyfactor.so $(PYFACTOR_OBJS) $(LIBS)
 

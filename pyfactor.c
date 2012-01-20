@@ -68,9 +68,13 @@ _DECLARE_XSTRTOL (xstrtoul, unsigned long int)
 _DECLARE_XSTRTOL (xstrtoimax, intmax_t)
 _DECLARE_XSTRTOL (xstrtoumax, uintmax_t)
 
-static mpz_t *factor = NULL;
-static size_t nfactors_found = 0;
-static size_t nfactors_allocated = 0;
+struct factor {
+	struct factor *next;
+	uintmax_t n;
+};
+
+struct factor *factors = NULL;
+int num_factors;
 
 static void
 debug (char const *fmt, ...)
@@ -138,6 +142,51 @@ xalloc_die (void)
 	abort ();
 }
 
+void
+new_factor (uintmax_t n)
+{
+	struct factor *factor;
+
+	factor = xcalloc (1, sizeof *factor);
+
+	factor->next = factors;
+	factors = factor;
+
+	num_factors++;
+}		
+
+int *
+factors_array_ints (void)
+{
+	int *factor_array, *fp;
+	struct factor *factor;
+
+	factor_array = xcalloc (num_factors, sizeof *factor_array);
+
+	for (factor = factors, fp = factor_array; factor != NULL;
+	     factor = factor->next, fp++) {
+		*fp = factor->n;
+	}
+
+	return factor_array;
+}
+
+uintmax_t *
+factors_array (void)
+{
+	uintmax_t *factor_array, *fp;
+	struct factor *factor;
+
+	factor_array = xcalloc (num_factors, sizeof *factor_array);
+
+	for (factor = factors, fp = factor_array; factor != NULL;
+	     factor = factor->next, fp++) {
+		*fp = factor->n;
+	}
+
+	return factor_array;
+}
+
 /* Convert I to a printable string in BUF, which must be at least
    INT_BUFSIZE_BOUND (INTTYPE) bytes long.  Return the address of the
    printable string, which need not start at BUF.  */
@@ -169,7 +218,7 @@ umaxtostr (uintmax_t i, char *buf)
 }
 
 static size_t
-factor_wheel (uintmax_t n0, size_t max_n_factors, uintmax_t *factors)
+factor_wheel (uintmax_t n0, size_t max_n_factors)
 {
 	uintmax_t n = n0, d, q;
 	size_t n_factors = 0;
@@ -193,7 +242,7 @@ factor_wheel (uintmax_t n0, size_t max_n_factors, uintmax_t *factors)
 		while (n == q * d)
 		{
 			assert (n_factors < max_n_factors);
-			factors[n_factors++] = d;
+			new_factor (d);
 			n = q;
 			q = n / d;
 		}
@@ -206,46 +255,19 @@ factor_wheel (uintmax_t n0, size_t max_n_factors, uintmax_t *factors)
 	if (n != 1 || n0 == 1)
 	{
 		assert (n_factors < max_n_factors);
-		factors[n_factors++] = n;
+		new_factor (n);
 	}
 
 	return n_factors;
 }
 
 /* Single-precision factoring */
-static void
-print_factors_single (uintmax_t n)
+static uintmax_t *
+get_factors_single (uintmax_t n)
 {
-	uintmax_t factors[MAX_N_FACTORS];
-	size_t n_factors = factor_wheel (n, MAX_N_FACTORS, factors);
-	size_t i;
-	char buf[INT_BUFSIZE_BOUND (uintmax_t)];
+	factor_wheel (n, MAX_N_FACTORS);
 
-	printf ("%s:", umaxtostr (n, buf));
-	for (i = 0; i < n_factors; i++)
-		printf (" %s", umaxtostr (factors[i], buf));
-	putchar ('\n');
-}
-
-static void
-emit_factor (mpz_t n)
-{
-	if (nfactors_found == nfactors_allocated)
-		factor = xrealloc(factor, nfactors_allocated * sizeof(*factor));
-//		factor = X2NREALLOC (factor, &nfactors_allocated);
-	mpz_init (factor[nfactors_found]);
-	mpz_set (factor[nfactors_found], n);
-	++nfactors_found;
-}
-
-static void
-emit_ul_factor (unsigned long int i)
-{
-	mpz_t t;
-	mpz_init (t);
-	mpz_set_ui (t, i);
-	emit_factor (t);
-	mpz_clear (t);
+	return factors_array ();
 }
 
 static void
@@ -267,7 +289,7 @@ factor_using_division (mpz_t t, unsigned int limit)
 	mpz_div_2exp (t, t, f);
 	while (f)
 	{
-		emit_ul_factor (2);
+		new_factor (2);
 		--f;
 	}
 
@@ -277,7 +299,7 @@ factor_using_division (mpz_t t, unsigned int limit)
 		if (mpz_cmp_ui (r, 0) != 0)
 			break;
 		mpz_set (t, q);
-		emit_ul_factor (3);
+		new_factor (3);
 	}
 
 	for (;;)
@@ -286,7 +308,7 @@ factor_using_division (mpz_t t, unsigned int limit)
 		if (mpz_cmp_ui (r, 0) != 0)
 			break;
 		mpz_set (t, q);
-		emit_ul_factor (5);
+		new_factor (5);
 	}
 
 	failures = 0;
@@ -308,7 +330,7 @@ factor_using_division (mpz_t t, unsigned int limit)
 		else
 		{
 			mpz_swap (t, q);
-			emit_ul_factor (f);
+			new_factor (f);
 			failures = 0;
 		}
 	}
@@ -400,14 +422,14 @@ factor_using_pollard_rho (mpz_t n, int a_int)
 		}
 		else
 		{
-			emit_factor (g);
+			new_factor (mpz_get_ui (g));
 		}
 		mpz_mod (x, x, n);
 		mpz_mod (x1, x1, n);
 		mpz_mod (y, y, n);
 		if (mpz_probab_prime_p (n, 3))
 		{
-			emit_factor (n);
+			new_factor (mpz_get_ui (n));
 			break;
 		}
 	}
@@ -430,49 +452,20 @@ mpcompare (const void *av, const void *bv)
 	return mpz_cmp (**a, **b);
 }
 
-static void
-sort_and_print_factors (void)
+static uintmax_t *
+sort_and_return_factors (void)
 {
-	mpz_t **faclist;
-	size_t i;
+	uintmax_t *factor_array = factors_array ();
 
-	faclist = xcalloc (nfactors_found, sizeof *faclist);
-	for (i = 0; i < nfactors_found; ++i)
-	{
-		faclist[i] = &factor[i];
-	}
-	qsort (faclist, nfactors_found, sizeof *faclist, mpcompare);
+	qsort (factor_array, num_factors, sizeof *factor_array, mpcompare);
 
-	for (i = 0; i < nfactors_found; ++i)
-	{
-		fputc (' ', stdout);
-		mpz_out_str (stdout, 10, *faclist[i]);
-	}
-	putchar ('\n');
-	free (faclist);
-}
-
-static void
-free_factors (void)
-{
-	size_t i;
-
-	for (i = 0; i < nfactors_found; ++i)
-	{
-		mpz_clear (factor[i]);
-	}
-	/* Don't actually free factor[] because in the case where we are
-	   reading numbers from stdin, we may be about to use it again.  */
-	nfactors_found = 0;
+	return factor_array;
 }
 
 /* Arbitrary-precision factoring */
-static void
+static uintmax_t *
 print_factors_multi (mpz_t t)
 {
-	mpz_out_str (stdout, 10, t);
-	putchar (':');
-
 	if (mpz_sgn (t) != 0)
 	{
 		/* Set the trial division limit according to the size of t.  */
@@ -486,63 +479,30 @@ print_factors_multi (mpz_t t)
 		{
 			debug ("[is number prime?] ");
 			if (mpz_probab_prime_p (t, 3))
-				emit_factor (t);
+				new_factor (mpz_get_ui (t));
 			else
 				factor_using_pollard_rho (t, 1);
 		}
 	}
 
 	mpz_clear (t);
-	sort_and_print_factors ();
-	free_factors ();
+	return sort_and_return_factors ();
 }
 
-/* This is derived from the function used in the factor program provided by
-   coreutils.
-
-   Emit the factors of the indicated number.  If we have the option of using
-   either algorithm, we select on the basis of the length of the number.
-   For longer numbers, we prefer the MP algorithm even if the native algorithm
-   has enough digits, because the algorithm is better.  The turnover point
-   depends on the value.  */
-static int
-print_factors (char const *s)
+uintmax_t *
+get_factors (uintmax_t n)
 {
-	uintmax_t n;
-	strtol_error err = xstrtoumax (s, NULL, 10, &n, "");
-
 	enum { GMP_TURNOVER_POINT = 100000 };
 
-	if (err == LONGINT_OVERFLOW
-	    || (err == LONGINT_OK && GMP_TURNOVER_POINT <= n)) {
+	if (GMP_TURNOVER_POINT <= n) {
 		mpz_t t;
 		mpz_init (t);
-		if (gmp_sscanf (s, "%Zd", t) == 1) {
-			debug ("[%s]", _("using arbitrary-precision arithmetic"));
-			print_factors_multi (t);
-			return 1;
-		}
-		err = LONGINT_INVALID;
+		mpz_set_ui (t, n);
+		debug ("[%s]", _("using arbitrary-precision arithmetic"));
+		return print_factors_multi (t);
 	}
 
-	switch (err)
-	{
-	case LONGINT_OK:
-		debug ("[%s]", _("using single-precision arithmetic"));
-		print_factors_single (n);
-		return 1;
-
-	case LONGINT_OVERFLOW:
-		fprintf (stderr, "ERROR: \"%s\" is too large\n", s);
-		exit (0);
-		return 0;
-
-	default:
-		fprintf (stderr, "ERROR: \"%s\" is not a valid positive "
-			 "integer\n", s);
-		exit (0);
-		return 0;
-	}
+	return get_factors_single (n);
 }
 
 
