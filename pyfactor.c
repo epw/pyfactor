@@ -5,7 +5,7 @@
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 /* The maximum number of factors, including -1, for negative numbers.  */
-#define MAX_N_FACTORS (sizeof (uintmax_t) * CHAR_BIT)
+#define MAX_N_FACTORS (sizeof (unsigned long long) * CHAR_BIT)
 
 static int verbose = 0;
 
@@ -66,11 +66,11 @@ typedef enum strtol_error strtol_error;
 _DECLARE_XSTRTOL (xstrtol, long int)
 _DECLARE_XSTRTOL (xstrtoul, unsigned long int)
 _DECLARE_XSTRTOL (xstrtoimax, intmax_t)
-_DECLARE_XSTRTOL (xstrtoumax, uintmax_t)
+_DECLARE_XSTRTOL (xstrtoumax, unsigned long long)
 
 struct factor {
 	struct factor *next;
-	uintmax_t n;
+	unsigned long long n;
 };
 
 struct factor *factors = NULL;
@@ -143,7 +143,7 @@ xalloc_die (void)
 }
 
 void
-new_factor (uintmax_t n)
+new_factor (unsigned long long n)
 {
 	struct factor *factor;
 
@@ -151,6 +151,8 @@ new_factor (uintmax_t n)
 
 	factor->next = factors;
 	factors = factor;
+
+	factor->n = n;
 
 	num_factors++;
 }		
@@ -171,10 +173,10 @@ factors_array_ints (void)
 	return factor_array;
 }
 
-uintmax_t *
+unsigned long long *
 factors_array (void)
 {
-	uintmax_t *factor_array, *fp;
+	unsigned long long *factor_array, *fp;
 	struct factor *factor;
 
 	factor_array = xcalloc (num_factors, sizeof *factor_array);
@@ -192,9 +194,9 @@ factors_array (void)
    printable string, which need not start at BUF.  */
 
 char *
-umaxtostr (uintmax_t i, char *buf)
+umaxtostr (unsigned long long i, char *buf)
 {
-	char *p = buf + INT_STRLEN_BOUND (uintmax_t);
+	char *p = buf + INT_STRLEN_BOUND (unsigned long long);
 	*p = 0;
 
 #if inttype_is_signed
@@ -218,9 +220,9 @@ umaxtostr (uintmax_t i, char *buf)
 }
 
 static size_t
-factor_wheel (uintmax_t n0, size_t max_n_factors)
+factor_wheel (unsigned long long n0, size_t max_n_factors)
 {
-	uintmax_t n = n0, d, q;
+	unsigned long long n = n0, d, q;
 	size_t n_factors = 0;
 	unsigned char const *w = wheel_tab;
 
@@ -262,8 +264,8 @@ factor_wheel (uintmax_t n0, size_t max_n_factors)
 }
 
 /* Single-precision factoring */
-static uintmax_t *
-get_factors_single (uintmax_t n)
+static unsigned long long *
+get_factors_single (unsigned long long n)
 {
 	factor_wheel (n, MAX_N_FACTORS);
 
@@ -447,15 +449,18 @@ factor_using_pollard_rho (mpz_t n, int a_int)
 static int
 mpcompare (const void *av, const void *bv)
 {
-	mpz_t *const *a = av;
-	mpz_t *const *b = bv;
-	return mpz_cmp (**a, **b);
+//	mpz_t *const *a = av;
+//	mpz_t *const *b = bv;
+	unsigned long long *const *a = av;
+	unsigned long long *const *b = bv;
+	return a > b;
+//	return mpz_cmp (**a, **b);
 }
 
-static uintmax_t *
+static unsigned long long *
 sort_and_return_factors (void)
 {
-	uintmax_t *factor_array = factors_array ();
+	unsigned long long *factor_array = factors_array ();
 
 	qsort (factor_array, num_factors, sizeof *factor_array, mpcompare);
 
@@ -463,7 +468,7 @@ sort_and_return_factors (void)
 }
 
 /* Arbitrary-precision factoring */
-static uintmax_t *
+static unsigned long long *
 get_factors_multi (mpz_t t)
 {
 	if (mpz_sgn (t) != 0)
@@ -489,8 +494,8 @@ get_factors_multi (mpz_t t)
 	return sort_and_return_factors ();
 }
 
-uintmax_t *
-get_factors (uintmax_t n)
+unsigned long long *
+get_factors (unsigned long long n)
 {
 	enum { GMP_TURNOVER_POINT = 100000 };
 
@@ -522,7 +527,7 @@ static PyObject *
 pyfactor_factor (PyObject *self, PyObject *args)
 {
 	PyObject *factor_list;
-	uintmax_t *factor_array;
+	unsigned long long *factor_array;
         int n, i;
 
         if (!PyArg_ParseTuple (args, "i", &n)) {
@@ -533,7 +538,7 @@ pyfactor_factor (PyObject *self, PyObject *args)
 
 	factor_list = PyList_New (num_factors);
 	for (i = 0; i < num_factors; i++) {
-		PyList_SetItem (factor_list, i,
+		PyList_SetItem (factor_list, num_factors - (i + 1),
 				Py_BuildValue ("K", factor_array[i]));
 	}
 
