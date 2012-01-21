@@ -1,11 +1,11 @@
 CFLAGS = -g -Wall `pkg-config --cflags python` --shared -fpic
 LIBS = -lm -lgmp `pkg-config --libs python`
 
-all: pyfactor.so
+all: factor.so
 
-PYFACTOR_OBJS = pyfactor.o
-pyfactor.so: $(PYFACTOR_OBJS)
-	$(CC) $(CFLAGS) -o pyfactor.so $(PYFACTOR_OBJS) $(LIBS)
+FACTOR_OBJS = factor.o
+factor.so: $(FACTOR_OBJS)
+	$(CC) $(CFLAGS) -o factor.so $(FACTOR_OBJS) $(LIBS)
 
 clean:
 	rm -f *.o *.so

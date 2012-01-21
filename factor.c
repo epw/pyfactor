@@ -521,7 +521,7 @@ free_factors (void)
 }
 
 static PyObject *
-pyfactor_factor (PyObject *self, PyObject *args)
+factor_factor (PyObject *self, PyObject *args)
 {
 	PyObject *factor_list;
 	unsigned long long *factor_array;
@@ -544,14 +544,14 @@ pyfactor_factor (PyObject *self, PyObject *args)
         return factor_list;
 }
 
-static PyMethodDef PyfactorMethods[] = {
-        {"factor", pyfactor_factor, METH_VARARGS,
+static PyMethodDef FactorMethods[] = {
+        {"factor", factor_factor, METH_VARARGS,
 	 "Return the prime factors of x."},
         {NULL, NULL, 0, NULL}
 };
 
 PyMODINIT_FUNC
-initpyfactor (void)
+initfactor (void)
 {
-        (void) Py_InitModule ("pyfactor", PyfactorMethods);
+        (void) Py_InitModule ("factor", FactorMethods);
 }

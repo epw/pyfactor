@@ -1,0 +1,12 @@
+The code in this module is derived from the "factor" program in
+coreutils.
+
+To install, run
+
+   # python setup.py install
+
+This will create the python module "factor", with one method,
+factor().
+
+factor.factor() takes an integer and returns a list of its prime
+factors, very similar to the output of /usr/bin/factor.
