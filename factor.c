@@ -543,8 +543,13 @@ factor_factor (PyObject *self, PyObject *args)
 
 	factor_list = PyList_New (num_factors);
 	for (i = 0; i < num_factors; i++) {
-		PyList_SetItem (factor_list, num_factors - (i + 1),
-				Py_BuildValue ("K", factor_array[i]));
+		if (factor_array[i] < INT_MAX) {
+			PyList_SetItem (factor_list, num_factors - (i + 1),
+					Py_BuildValue ("k", factor_array[i]));
+		} else {
+			PyList_SetItem (factor_list, num_factors - (i + 1),
+					Py_BuildValue ("K", factor_array[i]));
+		}
 	}
 
 	free_factors ();
