@@ -449,12 +449,9 @@ factor_using_pollard_rho (mpz_t n, int a_int)
 static int
 mpcompare (const void *av, const void *bv)
 {
-//	mpz_t *const *a = av;
-//	mpz_t *const *b = bv;
 	unsigned long long *const *a = av;
 	unsigned long long *const *b = bv;
 	return a > b;
-//	return mpz_cmp (**a, **b);
 }
 
 static unsigned long long *
