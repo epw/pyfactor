@@ -1,6 +1,8 @@
 #include <Python.h>
 #include <gmp.h>
 
+#define DOCSTRING "This module defines a function that calculates the prime factors of an integer."
+
 #define _(x) (x)
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -531,6 +533,12 @@ factor_factor (PyObject *self, PyObject *args)
                 return NULL;
         }
 
+	if (n < 0) {
+		PyErr_SetString (PyExc_ValueError, "Can only factor "
+				 "nonnegative numbers.");
+		return NULL;
+	}
+
 	factor_array = get_factors (n);
 
 	factor_list = PyList_New (num_factors);
@@ -553,5 +561,5 @@ static PyMethodDef FactorMethods[] = {
 PyMODINIT_FUNC
 initfactor (void)
 {
-        (void) Py_InitModule ("factor", FactorMethods);
+        (void) Py_InitModule3 ("factor", FactorMethods, DOCSTRING);
 }
