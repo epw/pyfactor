@@ -10,3 +10,6 @@ factor().
 
 factor.factor() takes an integer and returns a list of its prime
 factors, very similar to the output of /usr/bin/factor.
+
+At the moment, factor.factor() will raise an OverflowError if its
+input is 2^31 or greater. This is an unsolved bug.

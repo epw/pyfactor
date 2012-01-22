@@ -92,18 +92,6 @@ xrealloc (void *ptr, size_t size)
 }
 
 void
-xalloc_die (void)
-{
-	fprintf (stderr, "ERROR: Memory exhausted\n");
-	exit (-1);
-  /* The `noreturn' cannot be given to error, since it may return if
-     its first argument is 0.  To help compilers understand the
-     xalloc_die does not return, call abort.  Also, the abort is a
-     safety feature if exit_failure is 0 (which shouldn't happen).  */
-	abort ();
-}
-
-void
 new_factor (unsigned long long n)
 {
 	struct factor *factor;
@@ -148,36 +136,6 @@ factors_array (void)
 	}
 
 	return factor_array;
-}
-
-/* Convert I to a printable string in BUF, which must be at least
-   INT_BUFSIZE_BOUND (INTTYPE) bytes long.  Return the address of the
-   printable string, which need not start at BUF.  */
-
-char *
-umaxtostr (unsigned long long i, char *buf)
-{
-	char *p = buf + INT_STRLEN_BOUND (unsigned long long);
-	*p = 0;
-
-#if inttype_is_signed
-	if (i < 0)
-	{
-		do
-			*--p = '0' - i % 10;
-		while ((i /= 10) != 0);
-
-		*--p = '-';
-	}
-	else
-#endif
-	{
-		do
-			*--p = '0' + i % 10;
-		while ((i /= 10) != 0);
-	}
-
-	return p;
 }
 
 static size_t
@@ -511,7 +469,7 @@ factor_factor (PyObject *self, PyObject *args)
 
 static PyMethodDef FactorMethods[] = {
         {"factor", factor_factor, METH_VARARGS,
-	 "Return the prime factors of x."},
+	 "factor(x): Return the prime factors of x. Currently fails if x >= 2^31"},
         {NULL, NULL, 0, NULL}
 };
 
