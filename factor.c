@@ -3,13 +3,10 @@
 
 #define DOCSTRING "This module defines a function that calculates the prime factors of an integer."
 
-#define _(x) (x)
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 /* The maximum number of factors, including -1, for negative numbers.  */
 #define MAX_N_FACTORS (sizeof (unsigned long long) * CHAR_BIT)
-
-static int verbose = 0;
 
 #define ARRAY_CARDINALITY(Array) (sizeof (Array) / sizeof *(Array))
 
@@ -36,10 +33,6 @@ static int verbose = 0;
   ((sizeof (t) * CHAR_BIT - signed_type_or_expr__ (t)) * 146 / 485 \
    + signed_type_or_expr__ (t) + 1)
 
-/* Bound on buffer size needed to represent an integer type or expression T,
-   including the terminating null.  */
-#define INT_BUFSIZE_BOUND(t) (INT_STRLEN_BOUND (t) + 1)
-
 #include "wheel-size.h"  /* For the definition of WHEEL_SIZE.  */
 static const unsigned char wheel_tab[] =
 {
@@ -48,28 +41,6 @@ static const unsigned char wheel_tab[] =
 #define WHEEL_START (wheel_tab + WHEEL_SIZE)
 #define WHEEL_END (wheel_tab + ARRAY_CARDINALITY (wheel_tab))
 
-enum strtol_error
-  {
-    LONGINT_OK = 0,
-
-    /* These two values can be ORed together, to indicate that both
-       errors occurred.  */
-    LONGINT_OVERFLOW = 1,
-    LONGINT_INVALID_SUFFIX_CHAR = 2,
-
-    LONGINT_INVALID_SUFFIX_CHAR_WITH_OVERFLOW = (LONGINT_INVALID_SUFFIX_CHAR
-                                                 | LONGINT_OVERFLOW),
-    LONGINT_INVALID = 4
-  };
-typedef enum strtol_error strtol_error;
-
-#define _DECLARE_XSTRTOL(name, type) \
-  strtol_error name (const char *, char **, int, type *, const char *);
-_DECLARE_XSTRTOL (xstrtol, long int)
-_DECLARE_XSTRTOL (xstrtoul, unsigned long int)
-_DECLARE_XSTRTOL (xstrtoimax, intmax_t)
-_DECLARE_XSTRTOL (xstrtoumax, unsigned long long)
-
 struct factor {
 	struct factor *next;
 	unsigned long long n;
@@ -77,18 +48,6 @@ struct factor {
 
 struct factor *factors = NULL;
 int num_factors;
-
-static void
-debug (char const *fmt, ...)
-{
-	if (verbose)
-	{
-		va_list ap;
-		va_start (ap, fmt);
-		vfprintf (stderr, fmt, ap);
-		va_end (ap);
-	}
-}
 
 void *
 xcalloc (size_t nmemb, size_t size)
@@ -284,8 +243,6 @@ factor_using_division (mpz_t t, unsigned int limit)
 	unsigned int const *addv = add;
 	unsigned int failures;
 
-	debug ("[trial division (%u)] ", limit);
-
 	mpz_init (q);
 	mpz_init (r);
 
@@ -351,8 +308,6 @@ factor_using_pollard_rho (mpz_t n, int a_int)
 	mpz_t g;
 	mpz_t t1, t2;
 	int k, l, c, i;
-
-	debug ("[pollard-rho (%d)] ", a_int);
 
 	mpz_init (g);
 	mpz_init (t1);
@@ -421,7 +376,6 @@ factor_using_pollard_rho (mpz_t n, int a_int)
 			}
 			while (a_int == -2 || a_int == 0);
 
-			debug ("[composite factor--restarting pollard-rho] ");
 			factor_using_pollard_rho (g, a_int);
 		}
 		else
@@ -481,7 +435,6 @@ get_factors_multi (mpz_t t)
 
 		if (mpz_cmp_ui (t, 1) != 0)
 		{
-			debug ("[is number prime?] ");
 			if (mpz_probab_prime_p (t, 3))
 				new_factor (mpz_get_ui (t));
 			else
@@ -502,7 +455,6 @@ get_factors (unsigned long long n)
 		mpz_t t;
 		mpz_init (t);
 		mpz_set_ui (t, n);
-		debug ("[%s]", _("using arbitrary-precision arithmetic"));
 		return get_factors_multi (t);
 	}
 
@@ -543,7 +495,7 @@ factor_factor (PyObject *self, PyObject *args)
 
 	factor_list = PyList_New (num_factors);
 	for (i = 0; i < num_factors; i++) {
-		if (factor_array[i] < INT_MAX) {
+		if (factor_array[i] < LONG_MAX) {
 			PyList_SetItem (factor_list, num_factors - (i + 1),
 					Py_BuildValue ("k", factor_array[i]));
 		} else {
