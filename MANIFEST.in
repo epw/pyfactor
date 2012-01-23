@@ -1,0 +1,6 @@
+include factor.c
+include Makefile
+include README
+include wheel.h
+include wheel-size.h
+include setup.py
