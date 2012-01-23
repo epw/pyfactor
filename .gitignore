@@ -1,4 +1,6 @@
 *~
 *.o
-build/*
+build/
 *.pyc
+MANIFEST
+dist/
